@@ -42,12 +42,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   sendResponse({});
   return true;
 });
-
-chrome.tabs.onUpdated.addListener((tab) => {
-  chrome.storage.sync.get(['sites'], result => {
-    log.console("checking to see if the url is in " + result.sites)
-    if (result.sites.includes(tab.url)) {
-      chrome.tabs.remove(tab.id);
-    }
-  });
-});
