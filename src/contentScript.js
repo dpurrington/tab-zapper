@@ -32,12 +32,22 @@ chrome.runtime.sendMessage(
 
 // Listen for message
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.type === 'COUNT') {
-    console.log(`Current count is ${request.payload.count}`);
+  console.log("received message")
+  if (request.type === 'SITES') {
+    console.log(`Current sites is ${request.payload.sites}`);
   }
 
   // Send an empty response
   // See https://github.com/mozilla/webextension-polyfill/issues/130#issuecomment-531531890
   sendResponse({});
   return true;
+});
+
+chrome.tabs.onUpdated.addListener((tab) => {
+  chrome.storage.sync.get(['sites'], result => {
+    log.console("checking to see if the url is in " + result.sites)
+    if (result.sites.includes(tab.url)) {
+      chrome.tabs.remove(tab.id);
+    }
+  });
 });

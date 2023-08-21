@@ -10,16 +10,16 @@ import './popup.css';
   // To get storage access, we have to mention it in `permissions` property of manifest.json file
   // More information on Permissions can we found at
   // https://developer.chrome.com/extensions/declare_permissions
-  const counterStorage = {
+  const sitesStorage = {
     get: cb => {
-      chrome.storage.sync.get(['count'], result => {
-        cb(result.count);
+      chrome.storage.sync.get(['sites'], result => {
+        cb(result.sites);
       });
     },
     set: (value, cb) => {
       chrome.storage.sync.set(
         {
-          count: value,
+          sites: value,
         },
         () => {
           cb();
@@ -28,74 +28,58 @@ import './popup.css';
     },
   };
 
-  function setupCounter(initialValue = 0) {
-    document.getElementById('counter').innerHTML = initialValue;
+  function setupSites(initialValue = "") {
+    console.log("Setting up sites: " + initialValue);
+    document.getElementById('sites').value = initialValue;
 
-    document.getElementById('incrementBtn').addEventListener('click', () => {
-      updateCounter({
-        type: 'INCREMENT',
-      });
-    });
-
-    document.getElementById('decrementBtn').addEventListener('click', () => {
-      updateCounter({
-        type: 'DECREMENT',
-      });
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const sites = document.getElementById('sites');
+      updateSites(sites.value);
     });
   }
 
-  function updateCounter({ type }) {
-    counterStorage.get(count => {
-      let newCount;
+  function updateSites(sites) {
+    console.log("Updating sites: " + sites);
+    sitesStorage.set(sites, () => {
+      document.getElementById('sites').innerHTML = sites;
 
-      if (type === 'INCREMENT') {
-        newCount = count + 1;
-      } else if (type === 'DECREMENT') {
-        newCount = count - 1;
-      } else {
-        newCount = count;
-      }
+      // Communicate with content script of
+      // active tab by sending a message
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        const tab = tabs[0];
 
-      counterStorage.set(newCount, () => {
-        document.getElementById('counter').innerHTML = newCount;
-
-        // Communicate with content script of
-        // active tab by sending a message
-        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-          const tab = tabs[0];
-
-          chrome.tabs.sendMessage(
-            tab.id,
-            {
-              type: 'COUNT',
-              payload: {
-                count: newCount,
-              },
+        chrome.tabs.sendMessage(
+          tab.id,
+          {
+            type: 'SITES',
+            payload: {
+              sites: sites
             },
-            response => {
-              console.log('Current count value passed to contentScript file');
-            }
-          );
-        });
+          },
+          response => {
+            console.log('Current sites value passed to contentScript file');
+          }
+        );
       });
     });
   }
 
-  function restoreCounter() {
-    // Restore count value
-    counterStorage.get(count => {
-      if (typeof count === 'undefined') {
+  function restoreSites() {
+    // Restore value
+    sitesStorage.get(sites => {
+      console.log("Restoring sites: " + sites);
+      if (typeof sites === 'undefined') {
         // Set counter value as 0
-        counterStorage.set(0, () => {
-          setupCounter(0);
+        sitesStorage.set("", () => {
+          setupSites("");
         });
       } else {
-        setupCounter(count);
+        setupSites(sites);
       }
     });
   }
 
-  document.addEventListener('DOMContentLoaded', restoreCounter);
+  document.addEventListener('DOMContentLoaded', restoreSites);
 
   // Communicate with background file by sending a message
   chrome.runtime.sendMessage(

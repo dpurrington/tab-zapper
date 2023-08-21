@@ -47,12 +47,12 @@ code {
     border-radius: 2px;
 }
 
-.counter-label {
+.sites-label {
     font-size: 12px;
     margin-bottom: 5px;
 }
 
-.counter {
+.sites {
     font-size: 36px;
     font-weight: 700;
 }
