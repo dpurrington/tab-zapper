@@ -3,13 +3,6 @@
 import './popup.css';
 
 (function() {
-  // We will make use of Storage API to get and store `count` value
-  // More information on Storage API can we found at
-  // https://developer.chrome.com/extensions/storage
-
-  // To get storage access, we have to mention it in `permissions` property of manifest.json file
-  // More information on Permissions can we found at
-  // https://developer.chrome.com/extensions/declare_permissions
   const sitesStorage = {
     get: cb => {
       chrome.storage.sync.get(['sites'], result => {
@@ -32,10 +25,26 @@ import './popup.css';
     console.log("Setting up sites: " + initialValue);
     document.getElementById('sites').value = initialValue;
 
+    document.getElementById('zapBtn').addEventListener('click', async () => {
+      chrome.tabs.query({active: true}, async (tabs) => {
+        console.log(tabs);
+        const url = tabs[0].url;
+        // get permission
+        if (await getPermissions(url)) {
+          const sites = document.getElementById('sites')
+          addSite(sites.value, url);
+        }
+      });
+    });
+
     document.getElementById('saveBtn').addEventListener('click', () => {
       const sites = document.getElementById('sites');
       updateSites(sites.value);
     });
+  }
+
+  function addSite(sites, site) {
+    updateSites(sites + " " + site);
   }
 
   function updateSites(sites) {
@@ -94,3 +103,12 @@ import './popup.css';
     }
   );
 })();
+
+async function getPermissions(url) {
+  // Permissions must be requested from inside a user gesture, like a button's
+  // click handler.
+  return chrome.permissions.request({
+    permissions: ['tabs'],
+    origins: [url]
+  });
+}

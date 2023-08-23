@@ -20,6 +20,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+// this is how you would add a handler for the action
+chrome.action.onClicked.addListener((tab) => {
+  chrome.action.setTitle({tabId: tab.id, title: `You are on tab: ${tab.id}`});
+});
+
 function checkUrl(tab) {
   chrome.storage.sync.get(['sites'], function (result) {
     const sites = result.sites;
