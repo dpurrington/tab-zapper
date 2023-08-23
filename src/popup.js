@@ -4,20 +4,15 @@ import './popup.css';
 
 (function() {
   const sitesStorage = {
-    get: cb => {
-      chrome.storage.sync.get(['sites'], result => {
-        cb(result.sites);
-      });
+    get: async function() {
+      const result = await chrome.storage.sync.get(['sites']);
+      return result.sites;
     },
-    set: (value, cb) => {
+    set: async function (value) {
       chrome.storage.sync.set(
         {
           sites: value,
-        },
-        () => {
-          cb();
-        }
-      );
+        });
     },
   };
 
@@ -26,82 +21,67 @@ import './popup.css';
     document.getElementById('sites').value = initialValue;
 
     document.getElementById('zapBtn').addEventListener('click', async () => {
-      chrome.tabs.query({active: true}, async (tabs) => {
-        console.log(tabs);
-        const url = tabs[0].url;
-        // get permission
-        if (await getPermissions(url)) {
-          const sites = document.getElementById('sites')
-          addSite(sites.value, url);
-        }
-      });
+      const tabs = await chrome.tabs.query({active: true});
+      console.log(tabs);
+      const url = tabs[0].url;
+      // get permission
+      const result = await getPermissions(url)
+      console.log("Permission result: " + result);
+      if (result) {
+        const sites = document.getElementById('sites')
+        addSite(sites.value, url);
+        chrome.tabs.remove(tabs[0].id);
+      }
+      window.close();
     });
 
     document.getElementById('saveBtn').addEventListener('click', () => {
       const sites = document.getElementById('sites');
       updateSites(sites.value);
+      window.close();
     });
   }
 
-  function addSite(sites, site) {
+  async function addSite(sites, site) {
     updateSites(sites + " " + site);
   }
 
-  function updateSites(sites) {
+  async function updateSites(sites) {
     console.log("Updating sites: " + sites);
-    sitesStorage.set(sites, () => {
-      document.getElementById('sites').innerHTML = sites;
+    await sitesStorage.set(sites)
+    document.getElementById('sites').innerHTML = sites;
 
-      // Communicate with content script of
-      // active tab by sending a message
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        const tab = tabs[0];
+    // Communicate with content script of
+    // active tab by sending a message
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
 
-        chrome.tabs.sendMessage(
-          tab.id,
-          {
-            type: 'SITES',
-            payload: {
-              sites: sites
-            },
-          },
-          response => {
-            console.log('Current sites value passed to contentScript file');
-          }
-        );
+    const response = await chrome.tabs.sendMessage(
+      tab.id,
+      {
+        type: 'SITES',
+        payload: {
+          sites: sites
+        },
       });
-    });
+
+    console.log('Current sites value passed to contentScript file');
   }
 
-  function restoreSites() {
-    // Restore value
-    sitesStorage.get(sites => {
-      console.log("Restoring sites: " + sites);
-      if (typeof sites === 'undefined') {
-        // Set counter value as 0
-        sitesStorage.set("", () => {
-          setupSites("");
-        });
-      } else {
-        setupSites(sites);
-      }
-    });
+  async function restoreSites() {
+    const sites = await sitesStorage.get();
+
+    console.log("Restoring sites: " + sites);
+    if (typeof sites === 'undefined') {
+      // Set html value
+      await sitesStorage.set("");
+      setupSites("");
+    } else {
+      setupSites(sites);
+    }
   }
 
   document.addEventListener('DOMContentLoaded', restoreSites);
-
-  // Communicate with background file by sending a message
-  chrome.runtime.sendMessage(
-    {
-      type: 'GREETINGS',
-      payload: {
-        message: 'Hello, my name is Pop. I am from Popup.',
-      },
-    },
-    response => {
-      console.log(response.message);
-    }
-  );
 })();
 
 async function getPermissions(url) {
